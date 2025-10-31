@@ -1,0 +1,17 @@
+{
+  "server": {
+    "port": 3000,
+    "auth": {
+      "sessionExpiration": 604800
+    }
+  },
+  "api": {
+    "baseUrl": "http://langgraph:8000/v1"
+  },
+  "ui": {
+    "title": "LibreChat Agent",
+    "theme": "system",
+    "showToolPicker": true,
+    "introMessage": "Welcome to the LibreChat Agent platform. Ask anything and the agent will choose the right tools."
+  }
+}

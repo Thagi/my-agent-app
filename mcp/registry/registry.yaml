@@ -1,0 +1,60 @@
+# Example MCP registry entries that will be loaded by the LangGraph agent.
+# Each entry describes a tool server and the actions it supports.
+
+servers:
+  - name: web-search
+    description: "Performs web searches via n8n workflow"
+    transport:
+      type: http
+      base_url: http://n8n:5678/webhook/web-search
+    actions:
+      - name: search
+        display_name: Web search
+        input_schema:
+          type: object
+          required: [query]
+          properties:
+            query:
+              type: string
+              description: Query string to search for
+        output_schema:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  url:
+                    type: string
+                  snippet:
+                    type: string
+  - name: knowledge-base
+    description: "Retrieves documents from the shared knowledge base"
+    transport:
+      type: http
+      base_url: http://mcp-knowledge:8001
+    actions:
+      - name: retrieve
+        display_name: Retrieve documents
+        input_schema:
+          type: object
+          required: [topic]
+          properties:
+            topic:
+              type: string
+              description: Topic or identifier to retrieve
+        output_schema:
+          type: object
+          properties:
+            documents:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  content:
+                    type: string

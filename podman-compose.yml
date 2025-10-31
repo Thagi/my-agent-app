@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: librechat
+    depends_on:
+      - langgraph
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://langgraph:8000
+      - NEXTAUTH_URL=http://localhost:3080
+      - NEXTAUTH_SECRET=
+    ports:
+      - "3080:3000"
+    volumes:
+      - librechat-data:/app/data
+      - ./config/librechat.json:/app/config/custom.json:ro
+    restart: unless-stopped
+
+  langgraph:
+    build:
+      context: ./services/langgraph
+      dockerfile: Dockerfile
+    container_name: langgraph-agent
+    env_file:
+      - .env
+      - services/langgraph/.env.example
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LANGGRAPH_MODEL_ROUTER=${LANGGRAPH_MODEL_ROUTER}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+      - MCP_REGISTRY_PATH=/app/registry/registry.yaml
+    volumes:
+      - langgraph-state:/app/state
+      - ./mcp/registry:/app/registry:ro
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:1.67.3
+    container_name: n8n
+    environment:
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - WEBHOOK_URL=${PUBLIC_BASE_URL}/n8n/
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: librechat-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  librechat-data:
+  langgraph-state:
+  n8n-data:
+  ollama-models:
+  redis-data:

@@ -16,10 +16,24 @@ This repository defines an agentic application that exposes LibreChat as the pri
 .
 ├── README.md        # This document
 ├── AGENTS.md        # Contribution and coding-agent instructions
-└── PLANS.md         # High-level implementation plan for the platform
+├── PLANS.md         # High-level implementation plan for the platform
+├── podman-compose.yml
+├── config/
+│   └── librechat.json
+├── mcp/
+│   └── registry/
+│       └── registry.yaml
+└── services/
+    └── langgraph/
+        ├── AGENTS.md
+        ├── pyproject.toml
+        ├── Dockerfile
+        ├── src/langgraph_agent/
+        ├── tests/
+        └── mcp_registry/
 ```
 
-As the project evolves, source code for the LangGraph agent, Podman Compose definitions, and n8n assets will be added under dedicated directories (e.g., `services/`, `compose/`, `workflows/`).
+The LangGraph agent service currently ships with a FastAPI-based endpoint that mirrors OpenAI's chat completions API. It loads MCP registry metadata from `mcp/registry/registry.yaml`, selects a model provider using the built-in router, and prefers real OpenAI or Ollama calls when credentials are present. When upstream models are unavailable, the service gracefully falls back to deterministic stub responses so the UI remains responsive during development.
 
 ## Prerequisites
 - Podman **4.4+**
@@ -31,7 +45,10 @@ As the project evolves, source code for the LangGraph agent, Podman Compose defi
 ## Configuration
 1. Copy `.env.example` (to be provided with the implementation) to `.env` and set the following variables:
    - `OPENAI_API_KEY` – API key used by the agent when delegating to OpenAI models.
+   - `OPENAI_BASE_URL` – Override for the OpenAI REST endpoint (defaults to `https://api.openai.com/v1`).
+   - `OPENAI_CHAT_MODEL` – Chat completion model identifier (defaults to `gpt-4o-mini`).
    - `OLLAMA_BASE_URL` – HTTP endpoint for the local Ollama server (defaults to `http://host.containers.internal:11434`).
+   - `OLLAMA_MODEL` – Ollama model tag to request during inference (defaults to `gpt-oss:20b`).
    - `LANGGRAPH_MODEL_ROUTER` – Preferred model selection strategy (e.g., `openai`, `ollama`, or `auto`).
    - `LIBRECHAT_CONFIG_PATH` – Path to LibreChat configuration JSON.
    - `N8N_ENCRYPTION_KEY` – Persistent key required by n8n for encrypted credentials.
@@ -49,20 +66,37 @@ To prevent data loss when the Podman stack shuts down, the compose file will map
 Check the `podman-compose.yml` (to be added) for exact mapping names. Ensure the host directories exist before starting the stack.
 
 ## Running the Stack
-1. Build custom images if needed (e.g., the LangGraph agent service):
+1. Copy `.env.example` to `.env` and adjust secrets before starting the stack.
+2. Build custom images if needed (e.g., the LangGraph agent service):
    ```bash
    podman-compose build
    ```
-2. Start all services:
+3. Start all services:
    ```bash
    podman-compose up -d
    ```
-3. Access LibreChat at `http://localhost:3080` (default port). The LangGraph agent service exposes an internal HTTP endpoint consumed by LibreChat.
-4. Access n8n at `http://localhost:5678` to manage workflows and publish MCP-compatible APIs.
-5. To view logs:
+4. Access LibreChat at `http://localhost:3080` (default port). The LangGraph agent service exposes an internal HTTP endpoint consumed by LibreChat.
+5. Access n8n at `http://localhost:5678` to manage workflows and publish MCP-compatible APIs.
+6. To view logs:
    ```bash
    podman-compose logs -f
    ```
+
+### Running the LangGraph agent locally
+
+To iterate on the agent service without containers, install dependencies with [uv](https://github.com/astral-sh/uv) or pip:
+
+```bash
+cd services/langgraph
+uv pip install --all-extras .
+uvicorn langgraph_agent.main:app --reload
+```
+
+Execute the unit tests from the same directory:
+
+```bash
+pytest
+```
 
 ## n8n Workflow Publication as MCP Servers
 1. Design workflows in the n8n UI and test them using built-in tools.
