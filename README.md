@@ -8,6 +8,7 @@ This repository defines an agentic application that exposes LibreChat as the pri
 - **LangGraph Agent Service** – Python service that implements the agent, tool registry, and model selection logic. It supports both OpenAI-hosted models and locally hosted alternatives such as Ollama's `gpt-oss:20b`.
 - **MCP Tooling** – Collection of MCP servers (built-in services, bespoke integrations, and n8n-exported workflows) that expose structured tools to the agent.
 - **n8n Automation** – Workflow automation platform used to build reusable capabilities. Selected workflows are packaged and served as MCP endpoints.
+- **MongoDB** – Backing data store for LibreChat user accounts, conversations, and configuration state.
 - **Model Backends** – OpenAI models (default) and Ollama models (optional) accessed through a model router. Additional providers can be added with minimal configuration updates.
 - **Podman Compose Stack** – Containerized deployment ensuring each service runs in an isolated pod with persistent volumes for stateful components.
 
@@ -52,18 +53,20 @@ The LangGraph agent service currently ships with a FastAPI-based endpoint that m
    - `LANGGRAPH_MODEL_ROUTER` – Preferred model selection strategy (e.g., `openai`, `ollama`, or `auto`).
    - `LIBRECHAT_CONFIG_PATH` – Path to LibreChat configuration JSON.
    - `N8N_ENCRYPTION_KEY` – Persistent key required by n8n for encrypted credentials.
+   - `MONGO_URI` – Connection string for LibreChat's MongoDB instance (defaults to `mongodb://mongo:27017/librechat`).
 
 2. Optional: Add secrets required by n8n workflows (third-party API keys, webhook URLs) to `secrets/*.env` files and reference them from workflow nodes.
 
-## Persistent Volumes
-To prevent data loss when the Podman stack shuts down, the compose file will map named volumes (or bind mounts) to the following paths:
-- `./volumes/librechat/` → `/app/data`
-- `./volumes/langgraph/` → `/app/state`
-- `./volumes/n8n/` → `/home/node/.n8n`
-- `./volumes/ollama/` → `/root/.ollama`
-- `./volumes/mcp/` → `/srv/mcp`
+## Persistent volumes
+To prevent data loss when the Podman stack shuts down, the compose file defines the following named volumes:
+- `librechat-data` → `/app/data`
+- `langgraph-state` → `/app/state`
+- `n8n-data` → `/home/node/.n8n`
+- `ollama-models` → `/root/.ollama`
+- `redis-data` → `/data`
+- `mongo-data` → `/data/db`
 
-Check the `podman-compose.yml` (to be added) for exact mapping names. Ensure the host directories exist before starting the stack.
+Check `podman-compose.yml` for exact mapping names. Ensure the host directories exist before starting the stack if you convert the named volumes to bind mounts.
 
 ## Running the Stack
 1. Copy `.env.example` to `.env` and adjust secrets before starting the stack.
@@ -77,7 +80,8 @@ Check the `podman-compose.yml` (to be added) for exact mapping names. Ensure the
    ```
 4. Access LibreChat at `http://localhost:3080` (default port). The LangGraph agent service exposes an internal HTTP endpoint consumed by LibreChat.
 5. Access n8n at `http://localhost:5678` to manage workflows and publish MCP-compatible APIs.
-6. To view logs:
+6. Inspect MongoDB data by running `podman exec -it librechat-mongo mongosh` or by temporarily attaching a MongoDB client container to the podman network (the database is not exposed on the host by default).
+7. To view logs:
    ```bash
    podman-compose logs -f
    ```
