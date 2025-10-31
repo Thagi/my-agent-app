@@ -6,11 +6,14 @@ services:
     container_name: librechat
     depends_on:
       - langgraph
+      - mongo
+      - redis
     environment:
       - NODE_ENV=production
       - API_URL=http://langgraph:8000
       - NEXTAUTH_URL=http://localhost:3080
       - NEXTAUTH_SECRET=
+      - MONGO_URI=mongodb://mongo:27017/librechat
     ports:
       - "3080:3000"
     volumes:
@@ -39,7 +42,7 @@ services:
     restart: unless-stopped
 
   n8n:
-    image: docker.n8n.io/n8nio/n8n:1.67.3
+    image: docker.n8n.io/n8nio/n8n:latest
     container_name: n8n
     environment:
       - N8N_HOST=n8n
@@ -72,9 +75,19 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
+  mongo:
+    image: docker.io/library/mongo:6.0
+    container_name: librechat-mongo
+    environment:
+      - MONGO_INITDB_DATABASE=librechat
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
 volumes:
   librechat-data:
   langgraph-state:
   n8n-data:
   ollama-models:
   redis-data:
+  mongo-data:
